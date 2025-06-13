@@ -2,11 +2,11 @@
 name = "ksef-py"
 version = "0.0.1a1"
 description = "Modern Python SDK + CLI for Poland's National e-Invoice System (KSeF)"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["Kamil"]
 readme = "README.md"
 license = "MIT"
-homepage = "https://github.com/yourusername/ksef-py"
-repository = "https://github.com/yourusername/ksef-py"
+homepage = "https://github.com/Kamil-Dab/ksef-py"
+repository = "https://github.com/Kamil-Dab/ksef-py"
 documentation = "https://ksef-py.readthedocs.io"
 keywords = ["ksef", "einvoice", "poland", "tax", "api", "sdk"]
 classifiers = [
