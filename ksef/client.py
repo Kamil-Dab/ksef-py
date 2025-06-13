@@ -274,7 +274,7 @@ class KsefClient:
         try:
             response = await self.async_client.post(
                 "/v1/invoices/send",
-                json=request_data.dict(),
+                json=request_data.model_dump(),
                 headers={"Authorization": f"Bearer {token}"},
             )
             

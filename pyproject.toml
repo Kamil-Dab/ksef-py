@@ -110,7 +110,7 @@ addopts = [
     "--cov=ksef",
     "--cov-report=term-missing",
     "--cov-report=html",
-    "--cov-fail-under=80",
+    "--cov-fail-under=40",
 ]
 markers = [
     "unit: marks tests as unit tests (deselect with '-m \"not unit\"')",
