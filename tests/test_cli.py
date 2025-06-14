@@ -83,7 +83,15 @@ class TestCLI:
         mock_client = AsyncMock()
         mock_client.__aenter__.return_value = mock_client
         mock_client.__aexit__.return_value = None
-        mock_client.download.return_value = Path("test.pdf")
+        
+        # Create a mock Path object with stat() method
+        mock_path = MagicMock(spec=Path)
+        mock_stat = MagicMock()
+        mock_stat.st_size = 1024  # Mock file size
+        mock_path.stat.return_value = mock_stat
+        mock_path.__str__.return_value = "test.pdf"
+        
+        mock_client.download.return_value = mock_path
         mock_client_class.return_value = mock_client
         
         result = self.runner.invoke(main, [
