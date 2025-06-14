@@ -64,7 +64,7 @@ def send(
 ) -> None:
     """Send an invoice XML file to KSeF."""
 
-    async def _send_invoice():
+    async def _send_invoice() -> None:
         try:
             # Read XML file
             console.print(f"📄 Reading invoice: {xml_file}")
@@ -137,7 +137,7 @@ def status(
 ) -> None:
     """Check the status of an invoice by KSeF number."""
 
-    async def _check_status():
+    async def _check_status() -> None:
         try:
             client = KsefClient(
                 nip=nip,
@@ -218,7 +218,7 @@ def download(
 ) -> None:
     """Download an invoice by KSeF number."""
 
-    async def _download_invoice():
+    async def _download_invoice() -> None:
         try:
             client = KsefClient(
                 nip=nip,

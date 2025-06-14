@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import Response
@@ -29,7 +29,7 @@ class InvoiceRequest(BaseModel):
     """Invoice send request."""
 
     xml_content: str
-    filename: str = None
+    filename: Optional[str] = None
     encoding: str = "UTF-8"
 
 
@@ -42,7 +42,7 @@ def create_app() -> FastAPI:
     )
 
     @app.get("/")
-    async def root():
+    async def root() -> dict[str, Any]:
         """Root endpoint with API information."""
         return {
             "name": "KSeF Stub Server",
@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/v1/auth/token")
-    async def generate_token(request: TokenRequest):
+    async def generate_token(request: TokenRequest) -> dict[str, str]:
         """Mock token generation endpoint."""
         if len(request.nip) != 10 or not request.nip.isdigit():
             raise HTTPException(status_code=400, detail="Invalid NIP format")
@@ -79,7 +79,7 @@ def create_app() -> FastAPI:
     async def send_invoice(
         invoice_request: InvoiceRequest,
         authorization: str = Header(...),
-    ):
+    ) -> dict[str, str]:
         """Mock invoice send endpoint."""
         if not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid authorization header")
@@ -116,7 +116,7 @@ def create_app() -> FastAPI:
     async def get_invoice_status(
         ksef_number: str,
         authorization: str = Header(...),
-    ):
+    ) -> dict[str, Any]:
         """Mock invoice status endpoint."""
         if not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid authorization header")
@@ -141,7 +141,7 @@ def create_app() -> FastAPI:
         ksef_number: str,
         format: str = "pdf",
         authorization: str = Header(...),
-    ):
+    ) -> Response:
         """Mock invoice download endpoint."""
         if not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid authorization header")
@@ -177,7 +177,7 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/health")
-    async def health_check():
+    async def health_check() -> dict[str, Any]:
         """Health check endpoint."""
         return {
             "status": "healthy",

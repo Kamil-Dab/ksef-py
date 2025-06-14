@@ -5,7 +5,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -280,7 +280,7 @@ class KsefClient:
 
             if response.status_code == 201:
                 data = response.json()
-                ksef_number = data["ksef_number"]
+                ksef_number: str = data["ksef_number"]
                 logger.info(f"Invoice sent successfully: {ksef_number}")
                 return ksef_number
             elif response.status_code == 400:
@@ -475,19 +475,19 @@ class KsefClient:
 
         logger.info("KSeF client closed")
 
-    def __enter__(self):
+    def __enter__(self) -> "KsefClient":
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit."""
         if self._sync_client:
             self._sync_client.close()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "KsefClient":
         """Async context manager entry."""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit."""
         await self.close()
