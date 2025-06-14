@@ -33,7 +33,7 @@ jobs:
     
     - name: Load cached venv
       id: cached-poetry-dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: .venv
         key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
@@ -78,7 +78,7 @@ jobs:
     
     - name: Load cached venv
       id: cached-poetry-dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: .venv
         key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
@@ -95,11 +95,13 @@ jobs:
     
     - name: Upload coverage to Codecov
       if: matrix.python-version == env.PYTHON_VERSION
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
 
   ksef-validate:
     name: "KSeF XML Validation"
@@ -204,7 +206,7 @@ jobs:
       run: poetry build
     
     - name: Store build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
@@ -251,6 +253,6 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-                 git add ksef/xsd/
-         git commit -m "chore: update KSeF schemas from official sources"
-         git push 
+        git add ksef/xsd/
+        git commit -m "chore: update KSeF schemas from official sources"
+        git push 
