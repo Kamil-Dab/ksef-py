@@ -2,50 +2,52 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
 
 class KsefEnvironment(str, Enum):
     """KSeF environment types."""
-    
+
     TEST = "test"
     PROD = "prod"
 
 
 class InvoiceStatus(str, Enum):
     """KSeF invoice status types."""
-    
+
     ACCEPTED = "Accepted"
-    REJECTED = "Rejected" 
+    REJECTED = "Rejected"
     PENDING = "Pending"
     ERROR = "Error"
 
 
 class AuthMethod(str, Enum):
     """Authentication methods supported by KSeF."""
-    
+
     TOKEN = "token"
     CHALLENGE_FILE = "challenge_file"
 
 
 class InvoiceFormat(str, Enum):
     """Supported invoice download formats."""
-    
+
     XML = "xml"
     PDF = "pdf"
 
 
 class KsefCredentials(BaseModel):
     """KSeF authentication credentials."""
-    
+
     nip: str = Field(..., description="Company NIP number")
     environment: KsefEnvironment = Field(default=KsefEnvironment.TEST)
     token_path: Optional[str] = Field(None, description="Path to JWT token file")
-    private_key_path: Optional[str] = Field(None, description="Path to private key for signing")
+    private_key_path: Optional[str] = Field(
+        None, description="Path to private key for signing"
+    )
     certificate_path: Optional[str] = Field(None, description="Path to certificate")
-    
+
     @field_validator("nip")
     @classmethod
     def validate_nip(cls, v: str) -> str:
@@ -59,7 +61,7 @@ class KsefCredentials(BaseModel):
 
 class TokenResponse(BaseModel):
     """Response from token generation endpoint."""
-    
+
     token: str
     expires_at: datetime
     session_token: Optional[str] = None
@@ -67,7 +69,7 @@ class TokenResponse(BaseModel):
 
 class InvoiceSendRequest(BaseModel):
     """Request for sending an invoice."""
-    
+
     xml_content: str = Field(..., description="Invoice XML content")
     filename: Optional[str] = Field(None, description="Original filename")
     encoding: str = Field(default="UTF-8")
@@ -75,7 +77,7 @@ class InvoiceSendRequest(BaseModel):
 
 class InvoiceSendResponse(BaseModel):
     """Response from sending an invoice."""
-    
+
     ksef_number: str = Field(..., description="Assigned KSeF number")
     timestamp: datetime
     processing_code: Optional[str] = None
@@ -84,13 +86,13 @@ class InvoiceSendResponse(BaseModel):
 
 class InvoiceStatusRequest(BaseModel):
     """Request for checking invoice status."""
-    
+
     ksef_number: str = Field(..., description="KSeF number to check")
 
 
 class InvoiceStatusResponse(BaseModel):
     """Response from invoice status check."""
-    
+
     ksef_number: str
     status: InvoiceStatus
     timestamp: datetime
@@ -102,14 +104,14 @@ class InvoiceStatusResponse(BaseModel):
 
 class InvoiceDownloadRequest(BaseModel):
     """Request for downloading an invoice."""
-    
+
     ksef_number: str = Field(..., description="KSeF number to download")
     format: InvoiceFormat = Field(default=InvoiceFormat.PDF)
 
 
 class InvoiceDownloadResponse(BaseModel):
     """Response from invoice download."""
-    
+
     content: bytes
     filename: str
     content_type: str
@@ -118,16 +120,16 @@ class InvoiceDownloadResponse(BaseModel):
 
 class KsefApiError(BaseModel):
     """Standard KSeF API error response."""
-    
+
     error_code: str
     error_message: str
-    details: Optional[Dict[str, Any]] = None
+    details: Optional[dict[str, Any]] = None
     timestamp: Optional[datetime] = None
 
 
 class SessionInfo(BaseModel):
     """Information about current KSeF session."""
-    
+
     session_token: Optional[str] = None
     expires_at: Optional[datetime] = None
     environment: KsefEnvironment
@@ -137,17 +139,17 @@ class SessionInfo(BaseModel):
 
 class ReferenceDataEntry(BaseModel):
     """Entry in KSeF reference data cache."""
-    
+
     nip: str
     name: str
-    bank_accounts: List[str] = Field(default_factory=list)
+    bank_accounts: list[str] = Field(default_factory=list)
     last_updated: datetime
     active: bool = True
 
 
 class KsefConfiguration(BaseModel):
     """KSeF client configuration."""
-    
+
     base_url: str
     soap_url: str
     timeout: int = Field(default=30)
@@ -155,7 +157,7 @@ class KsefConfiguration(BaseModel):
     retry_delay: float = Field(default=1.0)
     verify_ssl: bool = Field(default=True)
     user_agent: str = Field(default="ksef-py/0.0.1a1")
-    
+
     @field_validator("base_url", "soap_url")
     @classmethod
     def validate_urls(cls, v: str) -> str:
@@ -175,4 +177,4 @@ KSEF_CONFIGS = {
         base_url="https://ksef.mf.gov.pl/api",
         soap_url="https://ksef.mf.gov.pl/services",
     ),
-} 
+}

@@ -6,4 +6,4 @@ __schema_date__ = "2025-01-01"
 __environments__ = ["test", "prod"]
 
 # Schema encryption key ID for X-KSeF-Encryption-KeyId header
-ENCRYPTION_KEY_ID = "ksef-schema-v1.0" 
+ENCRYPTION_KEY_ID = "ksef-schema-v1.0"

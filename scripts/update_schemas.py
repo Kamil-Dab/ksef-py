@@ -10,9 +10,8 @@ import asyncio
 import hashlib
 import json
 import logging
-from pathlib import Path
-from typing import Dict, List
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import httpx
 from rich.console import Console
@@ -33,7 +32,7 @@ SCHEMA_URLS = {
         ],
     },
     "prod": {
-        "base_url": "https://ksef.mf.gov.pl", 
+        "base_url": "https://ksef.mf.gov.pl",
         "schema_paths": [
             "/static/schemas/KSeF_v1.0.xsd",
             "/static/schemas/FA_v1-0E.xsd",
@@ -48,8 +47,8 @@ GENERATED_MODELS_DIR = PROJECT_ROOT / "ksef" / "generated"
 
 
 async def download_schema(
-    session: httpx.AsyncClient, 
-    base_url: str, 
+    session: httpx.AsyncClient,
+    base_url: str,
     schema_path: str,
     progress: Progress,
     task_id: TaskID,
@@ -57,46 +56,50 @@ async def download_schema(
     """Download a single schema file."""
     url = f"{base_url}{schema_path}"
     filename = Path(schema_path).name
-    
+
     try:
         progress.update(task_id, description=f"Downloading {filename}...")
         response = await session.get(url)
         response.raise_for_status()
-        
+
         content = response.content
         progress.update(task_id, advance=1, description=f"Downloaded {filename}")
-        
+
         return filename, content
-        
+
     except httpx.RequestError as e:
         logger.error(f"Failed to download {url}: {e}")
         raise
 
 
-async def download_all_schemas(env: str = "test") -> Dict[str, bytes]:
+async def download_all_schemas(env: str = "test") -> dict[str, bytes]:
     """Download all schemas for a given environment."""
     config = SCHEMA_URLS[env]
     schemas = {}
-    
+
     async with httpx.AsyncClient(timeout=30.0) as session:
         with Progress() as progress:
             tasks = []
-            
+
             for schema_path in config["schema_paths"]:
-                task_id = progress.add_task(f"Downloading {Path(schema_path).name}", total=1)
+                task_id = progress.add_task(
+                    f"Downloading {Path(schema_path).name}", total=1
+                )
                 tasks.append((schema_path, task_id))
-            
+
             # Download all schemas concurrently
             download_tasks = [
-                download_schema(session, config["base_url"], schema_path, progress, task_id)
+                download_schema(
+                    session, config["base_url"], schema_path, progress, task_id
+                )
                 for schema_path, task_id in tasks
             ]
-            
+
             results = await asyncio.gather(*download_tasks)
-            
+
             for filename, content in results:
                 schemas[filename] = content
-                
+
     return schemas
 
 
@@ -115,50 +118,50 @@ def calculate_checksum(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 
-def save_schemas(schemas: Dict[str, bytes], env: str) -> None:
+def save_schemas(schemas: dict[str, bytes], env: str) -> None:
     """Save schemas to the appropriate directories."""
     env_dir = SCHEMAS_DIR / env
     env_dir.mkdir(parents=True, exist_ok=True)
-    
+
     manifest = {
         "environment": env,
         "updated_at": "2025-01-01T00:00:00Z",  # Would use actual timestamp
         "schemas": {},
     }
-    
+
     for filename, content in schemas.items():
         if not validate_schema(content):
             logger.error(f"Skipping invalid schema: {filename}")
             continue
-            
+
         # Save schema file
         schema_path = env_dir / filename
         schema_path.write_bytes(content)
-        
+
         # Add to manifest
         manifest["schemas"][filename] = {
             "path": str(schema_path.relative_to(PROJECT_ROOT)),
             "checksum": calculate_checksum(content),
             "size": len(content),
         }
-        
+
         console.print(f"✅ Saved {filename} ({len(content):,} bytes)")
-    
+
     # Save manifest
     manifest_path = env_dir / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2))
-    
+
     console.print(f"📄 Saved manifest: {manifest_path}")
 
 
-def generate_pydantic_models(schemas: Dict[str, bytes]) -> None:
+def generate_pydantic_models(schemas: dict[str, bytes]) -> None:
     """Generate Pydantic models from XSD schemas."""
     # This is a placeholder for XSD -> Pydantic model generation
     # In a real implementation, you'd use a library like xsdata or write
     # custom XSD parsing logic
-    
+
     GENERATED_MODELS_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # Create a simple generated models file for now
     generated_content = '''"""
 Generated Pydantic models from KSeF XSD schemas.
@@ -174,7 +177,7 @@ from pydantic import BaseModel, Field
 
 class GeneratedKsefModels:
     """Placeholder for generated models from XSD schemas."""
-    
+
     # TODO: Implement XSD -> Pydantic model generation
     # This would include models for:
     # - Invoice structures
@@ -187,7 +190,7 @@ class GeneratedKsefModels:
 # Auto-generated model classes would be defined here
 class InvoiceHeaderGenerated(BaseModel):
     """Generated from XSD schema - Invoice header structure."""
-    
+
     invoice_number: str = Field(..., description="Invoice number")
     issue_date: datetime = Field(..., description="Issue date")
     # ... more fields from XSD
@@ -195,15 +198,15 @@ class InvoiceHeaderGenerated(BaseModel):
 
 class SellerInfoGenerated(BaseModel):
     """Generated from XSD schema - Seller information."""
-    
+
     tax_id: str = Field(..., description="Tax identification number")
     name: str = Field(..., description="Company name")
     # ... more fields from XSD
 '''
-    
+
     models_file = GENERATED_MODELS_DIR / "__init__.py"
     models_file.write_text(generated_content)
-    
+
     console.print(f"🔧 Generated models placeholder: {models_file}")
     console.print("⚠️  Full XSD -> Pydantic generation not yet implemented")
 
@@ -211,39 +214,39 @@ class SellerInfoGenerated(BaseModel):
 async def main():
     """Main script entry point."""
     console.print("🔄 Updating KSeF schemas from official sources...")
-    
+
     try:
         # Download schemas for both environments
         for env in ["test", "prod"]:
             console.print(f"\n📥 Downloading {env.upper()} environment schemas...")
-            
+
             schemas = await download_all_schemas(env)
-            
+
             if not schemas:
                 console.print(f"❌ No schemas downloaded for {env}", style="red")
                 continue
-                
+
             console.print(f"✅ Downloaded {len(schemas)} schemas for {env}")
-            
+
             # Save schemas
             save_schemas(schemas, env)
-            
+
             # Generate models (only once, using test schemas)
             if env == "test":
                 console.print("\n🏗️  Generating Pydantic models...")
                 generate_pydantic_models(schemas)
-        
+
         console.print("\n🎉 Schema update completed successfully!")
         console.print("📝 Next steps:")
         console.print("  1. Review downloaded schemas in ksef/xsd/")
         console.print("  2. Implement full XSD -> Pydantic generation")
         console.print("  3. Update version numbers in __init__.py")
         console.print("  4. Run tests to ensure compatibility")
-        
+
     except Exception as e:
         console.print(f"💥 Schema update failed: {e}", style="red")
         raise
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

@@ -2,14 +2,14 @@
 
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict
+from typing import Any
 
-from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 
 # Module-level storage that persists across requests
-_invoices_store: Dict[str, Dict[str, Any]] = {}
+_invoices_store: dict[str, dict[str, Any]] = {}
 
 
 def clear_storage() -> None:
@@ -20,12 +20,14 @@ def clear_storage() -> None:
 
 class TokenRequest(BaseModel):
     """Token generation request."""
+
     nip: str
     environment: str
 
 
 class InvoiceRequest(BaseModel):
     """Invoice send request."""
+
     xml_content: str
     filename: str = None
     encoding: str = "UTF-8"
@@ -59,14 +61,14 @@ def create_app() -> FastAPI:
         """Mock token generation endpoint."""
         if len(request.nip) != 10 or not request.nip.isdigit():
             raise HTTPException(status_code=400, detail="Invalid NIP format")
-        
+
         if request.environment not in ["test", "prod"]:
             raise HTTPException(status_code=400, detail="Invalid environment")
-        
+
         # Generate mock JWT token
         token = f"mock.jwt.token.{uuid.uuid4().hex[:16]}"
         expires_at = datetime.now() + timedelta(hours=1)
-        
+
         return {
             "token": token,
             "expires_at": expires_at.isoformat(),
@@ -81,18 +83,18 @@ def create_app() -> FastAPI:
         """Mock invoice send endpoint."""
         if not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid authorization header")
-        
+
         token = authorization.replace("Bearer ", "")
         if not token.startswith("mock.jwt.token"):
             raise HTTPException(status_code=401, detail="Invalid token")
-        
+
         # Validate basic XML structure
         if not invoice_request.xml_content.strip().startswith("<?xml"):
             raise HTTPException(status_code=400, detail="Invalid XML format")
-        
+
         # Generate mock KSeF number
         ksef_number = f"KSEF:2025:PL/{uuid.uuid4().hex[:10].upper()}"
-        
+
         # Store invoice data in module-level storage
         _invoices_store[ksef_number] = {
             "xml_content": invoice_request.xml_content,
@@ -102,7 +104,7 @@ def create_app() -> FastAPI:
             "processing_code": "200",
             "processing_description": "Invoice processed successfully",
         }
-        
+
         return {
             "ksef_number": ksef_number,
             "timestamp": datetime.now().isoformat(),
@@ -118,12 +120,12 @@ def create_app() -> FastAPI:
         """Mock invoice status endpoint."""
         if not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid authorization header")
-        
+
         if ksef_number not in _invoices_store:
             raise HTTPException(status_code=404, detail="Invoice not found")
-        
+
         invoice_data = _invoices_store[ksef_number]
-        
+
         return {
             "ksef_number": ksef_number,
             "status": invoice_data["status"],
@@ -143,26 +145,28 @@ def create_app() -> FastAPI:
         """Mock invoice download endpoint."""
         if not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid authorization header")
-        
+
         if ksef_number not in _invoices_store:
             raise HTTPException(status_code=404, detail="Invoice not found")
-        
+
         if format not in ["pdf", "xml"]:
             raise HTTPException(status_code=400, detail="Invalid format")
-        
+
         invoice_data = _invoices_store[ksef_number]
-        
+
         if format == "xml":
             content = invoice_data["xml_content"].encode("utf-8")
             media_type = "application/xml"
             filename = f"{ksef_number}.xml"
         else:
             # Mock PDF content
-            content = b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n"
-            content += f"Mock PDF content for {ksef_number}".encode("utf-8")
+            content = (
+                b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n"
+            )
+            content += f"Mock PDF content for {ksef_number}".encode()
             media_type = "application/pdf"
             filename = f"{ksef_number}.pdf"
-        
+
         return Response(
             content=content,
             media_type=media_type,
@@ -186,6 +190,6 @@ def create_app() -> FastAPI:
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     app = create_app()
-    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info") 
+    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")

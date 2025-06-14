@@ -1,17 +1,18 @@
 """Tests for Pydantic models."""
 
-import pytest
 from datetime import datetime
+
+import pytest
 from pydantic import ValidationError
 
 from ksef.models import (
+    InvoiceFormat,
+    InvoiceSendRequest,
+    InvoiceStatus,
+    KsefConfiguration,
     KsefCredentials,
     KsefEnvironment,
-    InvoiceStatus,
-    InvoiceFormat,
     TokenResponse,
-    InvoiceSendRequest,
-    KsefConfiguration,
 )
 
 
@@ -27,7 +28,7 @@ class TestKsefCredentials:
         """Test NIP validation with formatting characters."""
         creds = KsefCredentials(nip="123-456-78-90")
         assert creds.nip == "1234567890"
-        
+
         creds = KsefCredentials(nip="123 456 78 90")
         assert creds.nip == "1234567890"
 
@@ -35,7 +36,7 @@ class TestKsefCredentials:
         """Test validation error for invalid NIP length."""
         with pytest.raises(ValidationError, match="NIP must contain exactly 10 digits"):
             KsefCredentials(nip="123456789")  # Too short
-            
+
         with pytest.raises(ValidationError, match="NIP must contain exactly 10 digits"):
             KsefCredentials(nip="12345678901")  # Too long
 
@@ -76,7 +77,7 @@ class TestTokenResponse:
             token="test.jwt.token",
             expires_at=expires_at,
         )
-        
+
         assert response.token == "test.jwt.token"
         assert response.expires_at == expires_at
         assert response.session_token is None
@@ -89,7 +90,7 @@ class TestTokenResponse:
             expires_at=expires_at,
             session_token="session_123",
         )
-        
+
         assert response.session_token == "session_123"
 
 
@@ -100,7 +101,7 @@ class TestInvoiceSendRequest:
         """Test valid invoice send request."""
         xml_content = "<invoice>test</invoice>"
         request = InvoiceSendRequest(xml_content=xml_content)
-        
+
         assert request.xml_content == xml_content
         assert request.filename is None
         assert request.encoding == "UTF-8"
@@ -109,10 +110,9 @@ class TestInvoiceSendRequest:
         """Test request with filename."""
         xml_content = "<invoice>test</invoice>"
         request = InvoiceSendRequest(
-            xml_content=xml_content,
-            filename="test_invoice.xml"
+            xml_content=xml_content, filename="test_invoice.xml"
         )
-        
+
         assert request.filename == "test_invoice.xml"
 
 
@@ -125,7 +125,7 @@ class TestKsefConfiguration:
             base_url="https://ksef-test.mf.gov.pl/api",
             soap_url="https://ksef-test.mf.gov.pl/services",
         )
-        
+
         assert config.base_url == "https://ksef-test.mf.gov.pl/api"
         assert config.soap_url == "https://ksef-test.mf.gov.pl/services"
         assert config.timeout == 30  # default
@@ -133,7 +133,9 @@ class TestKsefConfiguration:
 
     def test_url_validation(self):
         """Test URL validation."""
-        with pytest.raises(ValidationError, match="URLs must start with http:// or https://"):
+        with pytest.raises(
+            ValidationError, match="URLs must start with http:// or https://"
+        ):
             KsefConfiguration(
                 base_url="invalid-url",
                 soap_url="https://ksef-test.mf.gov.pl/services",
@@ -145,6 +147,6 @@ class TestKsefConfiguration:
             base_url="https://ksef-test.mf.gov.pl/api/",
             soap_url="https://ksef-test.mf.gov.pl/services/",
         )
-        
+
         assert config.base_url == "https://ksef-test.mf.gov.pl/api"
-        assert config.soap_url == "https://ksef-test.mf.gov.pl/services" 
+        assert config.soap_url == "https://ksef-test.mf.gov.pl/services"

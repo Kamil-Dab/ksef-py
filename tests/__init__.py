@@ -1,1 +1,1 @@
-"""Test package for ksef-py.""" 
+"""Test package for ksef-py."""

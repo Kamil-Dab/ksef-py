@@ -5,7 +5,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Optional, Union
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -19,15 +19,13 @@ from ksef.exceptions import (
     KsefValidationError,
 )
 from ksef.models import (
-    InvoiceDownloadRequest,
+    KSEF_CONFIGS,
     InvoiceFormat,
     InvoiceSendRequest,
     InvoiceStatus,
-    InvoiceStatusRequest,
     KsefConfiguration,
     KsefCredentials,
     KsefEnvironment,
-    KSEF_CONFIGS,
     SessionInfo,
     TokenResponse,
 )
@@ -38,10 +36,10 @@ logger = logging.getLogger(__name__)
 class KsefClient:
     """
     Modern async-first client for Poland's National e-Invoice System (KSeF).
-    
+
     Supports both REST and SOAP endpoints with automatic token management,
     retry logic, and comprehensive error handling.
-    
+
     Example:
         >>> client = KsefClient(nip="1234567890", env="test")
         >>> ksef_nr = await client.send_invoice(xml_content)
@@ -60,7 +58,7 @@ class KsefClient:
     ) -> None:
         """
         Initialize KSeF client.
-        
+
         Args:
             nip: Company NIP number (10 digits)
             env: Environment ("test" or "prod")
@@ -76,21 +74,21 @@ class KsefClient:
             private_key_path=str(private_key_path) if private_key_path else None,
             certificate_path=str(certificate_path) if certificate_path else None,
         )
-        
+
         self.config = config or KSEF_CONFIGS[self.credentials.environment]
         self.session_info = SessionInfo(
             environment=self.credentials.environment,
             nip=self.credentials.nip,
         )
-        
+
         # HTTP clients (will be initialized on first use)
         self._async_client: Optional[httpx.AsyncClient] = None
         self._sync_client: Optional[httpx.Client] = None
-        
+
         # Token management
         self._token: Optional[str] = None
         self._token_expires_at: Optional[datetime] = None
-        
+
         logger.info(
             f"Initialized KSeF client for NIP {self.credentials.nip} "
             f"in {self.credentials.environment.value} environment"
@@ -132,16 +130,16 @@ class KsefClient:
         """Load token from file if token_path is configured."""
         if not self.credentials.token_path:
             return None
-            
+
         token_path = Path(self.credentials.token_path)
         if not token_path.exists():
             logger.warning(f"Token file not found: {token_path}")
             return None
-            
+
         try:
             token_data = json.loads(token_path.read_text())
             expires_at = datetime.fromisoformat(token_data["expires_at"])
-            
+
             # Check if token is still valid (with 5 minute buffer)
             if expires_at > datetime.now() + timedelta(minutes=5):
                 self._token = token_data["token"]
@@ -150,27 +148,27 @@ class KsefClient:
                 return self._token
             else:
                 logger.info("Token in file has expired")
-                
+
         except (json.JSONDecodeError, KeyError, ValueError) as e:
             logger.warning(f"Failed to load token from file: {e}")
-            
+
         return None
 
     def _save_token_to_file(self, token: str, expires_at: datetime) -> None:
         """Save token to file if token_path is configured."""
         if not self.credentials.token_path:
             return
-            
+
         token_path = Path(self.credentials.token_path)
         token_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         token_data = {
             "token": token,
             "expires_at": expires_at.isoformat(),
             "nip": self.credentials.nip,
             "environment": self.credentials.environment.value,
         }
-        
+
         token_path.write_text(json.dumps(token_data, indent=2))
         logger.info(f"Saved token to file: {token_path}")
 
@@ -179,7 +177,7 @@ class KsefClient:
         # Try to load existing token
         if not self._token:
             self._load_token_from_file()
-            
+
         # Check if current token is still valid
         if (
             self._token
@@ -187,17 +185,17 @@ class KsefClient:
             and self._token_expires_at > datetime.now() + timedelta(minutes=5)
         ):
             return self._token
-            
+
         # Generate new token
         logger.info("Generating new authentication token")
         token_response = await self.generate_token()
-        
+
         self._token = token_response.token
         self._token_expires_at = token_response.expires_at
-        
+
         # Save to file if configured
         self._save_token_to_file(self._token, self._token_expires_at)
-        
+
         return self._token
 
     @retry(
@@ -208,10 +206,10 @@ class KsefClient:
     async def generate_token(self) -> TokenResponse:
         """
         Generate authentication token from KSeF API.
-        
+
         Returns:
             TokenResponse with token and expiration info
-            
+
         Raises:
             KsefAuthenticationError: If authentication fails
             KsefNetworkError: If network request fails
@@ -224,7 +222,7 @@ class KsefClient:
                     "environment": self.credentials.environment.value,
                 },
             )
-            
+
             if response.status_code == 200:
                 data = response.json()
                 return TokenResponse(
@@ -242,42 +240,44 @@ class KsefClient:
                     f"Token generation failed with status {response.status_code}",
                     details=response.json() if response.content else {},
                 )
-                
-        except httpx.TimeoutException as e:
-            raise KsefTimeoutError(f"Token generation timed out: {e}")
-        except httpx.RequestError as e:
-            raise KsefNetworkError(f"Network error during token generation: {e}")
 
-    async def send_invoice(self, xml_content: str, filename: Optional[str] = None) -> str:
+        except httpx.TimeoutException as e:
+            raise KsefTimeoutError(f"Token generation timed out: {e}") from e
+        except httpx.RequestError as e:
+            raise KsefNetworkError(f"Network error during token generation: {e}") from e
+
+    async def send_invoice(
+        self, xml_content: str, filename: Optional[str] = None
+    ) -> str:
         """
         Send invoice to KSeF system.
-        
+
         Args:
             xml_content: Invoice XML content
             filename: Original filename (optional)
-            
+
         Returns:
             KSeF number assigned to the invoice
-            
+
         Raises:
             KsefValidationError: If XML validation fails
             KsefAuthenticationError: If authentication fails
             KsefNetworkError: If network request fails
         """
         token = await self._ensure_token()
-        
+
         request_data = InvoiceSendRequest(
             xml_content=xml_content,
             filename=filename,
         )
-        
+
         try:
             response = await self.async_client.post(
                 "/v1/invoices/send",
                 json=request_data.model_dump(),
                 headers={"Authorization": f"Bearer {token}"},
             )
-            
+
             if response.status_code == 201:
                 data = response.json()
                 ksef_number = data["ksef_number"]
@@ -297,34 +297,34 @@ class KsefClient:
                     f"Invoice send failed with status {response.status_code}",
                     details=response.json() if response.content else {},
                 )
-                
+
         except httpx.TimeoutException as e:
-            raise KsefTimeoutError(f"Invoice send timed out: {e}")
+            raise KsefTimeoutError(f"Invoice send timed out: {e}") from e
         except httpx.RequestError as e:
-            raise KsefNetworkError(f"Network error during invoice send: {e}")
+            raise KsefNetworkError(f"Network error during invoice send: {e}") from e
 
     async def get_status(self, ksef_number: str) -> InvoiceStatus:
         """
         Get status of an invoice by KSeF number.
-        
+
         Args:
             ksef_number: KSeF number to check
-            
+
         Returns:
             Current status of the invoice
-            
+
         Raises:
             KsefAuthenticationError: If authentication fails
             KsefNetworkError: If network request fails
         """
         token = await self._ensure_token()
-        
+
         try:
             response = await self.async_client.get(
                 f"/v1/invoices/{ksef_number}/status",
                 headers={"Authorization": f"Bearer {token}"},
             )
-            
+
             if response.status_code == 200:
                 data = response.json()
                 status = InvoiceStatus(data["status"])
@@ -339,11 +339,11 @@ class KsefClient:
                     f"Status check failed with status {response.status_code}",
                     details=response.json() if response.content else {},
                 )
-                
+
         except httpx.TimeoutException as e:
-            raise KsefTimeoutError(f"Status check timed out: {e}")
+            raise KsefTimeoutError(f"Status check timed out: {e}") from e
         except httpx.RequestError as e:
-            raise KsefNetworkError(f"Network error during status check: {e}")
+            raise KsefNetworkError(f"Network error during status check: {e}") from e
 
     async def download(
         self,
@@ -353,29 +353,29 @@ class KsefClient:
     ) -> Path:
         """
         Download invoice from KSeF system.
-        
+
         Args:
             ksef_number: KSeF number to download
             format: Download format ("pdf" or "xml")
             output_path: Where to save the file (optional)
-            
+
         Returns:
             Path to the downloaded file
-            
+
         Raises:
             KsefAuthenticationError: If authentication fails
             KsefNetworkError: If network request fails
         """
         token = await self._ensure_token()
         invoice_format = InvoiceFormat(format) if isinstance(format, str) else format
-        
+
         try:
             response = await self.async_client.get(
                 f"/v1/invoices/{ksef_number}/download",
                 params={"format": invoice_format.value},
                 headers={"Authorization": f"Bearer {token}"},
             )
-            
+
             if response.status_code == 200:
                 # Determine output path
                 if output_path is None:
@@ -383,14 +383,14 @@ class KsefClient:
                     output_path = Path(f"{ksef_number}.{extension}")
                 else:
                     output_path = Path(output_path)
-                    
+
                 # Save file
                 output_path.parent.mkdir(parents=True, exist_ok=True)
                 output_path.write_bytes(response.content)
-                
+
                 logger.info(f"Downloaded {ksef_number} to {output_path}")
                 return output_path
-                
+
             elif response.status_code == 404:
                 raise KsefError(f"Invoice not found: {ksef_number}")
             elif response.status_code == 401:
@@ -400,20 +400,46 @@ class KsefClient:
                     f"Download failed with status {response.status_code}",
                     details=response.json() if response.content else {},
                 )
-                
+
         except httpx.TimeoutException as e:
-            raise KsefTimeoutError(f"Download timed out: {e}")
+            raise KsefTimeoutError(f"Download timed out: {e}") from e
         except httpx.RequestError as e:
-            raise KsefNetworkError(f"Network error during download: {e}")
+            raise KsefNetworkError(f"Network error during download: {e}") from e
 
     # Sync wrapper methods
-    def send_invoice_sync(self, xml_content: str, filename: Optional[str] = None) -> str:
+    def send_invoice_sync(
+        self, xml_content: str, filename: Optional[str] = None
+    ) -> str:
         """Synchronous version of send_invoice."""
-        return asyncio.run(self.send_invoice(xml_content, filename))
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # No event loop running, safe to use asyncio.run()
+            return asyncio.run(self.send_invoice(xml_content, filename))
+        else:
+            # Event loop is running, need to run in thread
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    asyncio.run, self.send_invoice(xml_content, filename)
+                )
+                return future.result()
 
     def get_status_sync(self, ksef_number: str) -> InvoiceStatus:
         """Synchronous version of get_status."""
-        return asyncio.run(self.get_status(ksef_number))
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # No event loop running, safe to use asyncio.run()
+            return asyncio.run(self.get_status(ksef_number))
+        else:
+            # Event loop is running, need to run in thread
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, self.get_status(ksef_number))
+                return future.result()
 
     def download_sync(
         self,
@@ -422,18 +448,31 @@ class KsefClient:
         output_path: Optional[Union[str, Path]] = None,
     ) -> Path:
         """Synchronous version of download."""
-        return asyncio.run(self.download(ksef_number, format, output_path))
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # No event loop running, safe to use asyncio.run()
+            return asyncio.run(self.download(ksef_number, format, output_path))
+        else:
+            # Event loop is running, need to run in thread
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    asyncio.run, self.download(ksef_number, format, output_path)
+                )
+                return future.result()
 
     async def close(self) -> None:
         """Close HTTP clients and clean up resources."""
         if self._async_client:
             await self._async_client.aclose()
             self._async_client = None
-            
+
         if self._sync_client:
             self._sync_client.close()
             self._sync_client = None
-            
+
         logger.info("KSeF client closed")
 
     def __enter__(self):
@@ -451,4 +490,4 @@ class KsefClient:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
-        await self.close() 
+        await self.close()

@@ -10,8 +10,7 @@ from pathlib import Path
 
 from ksef import KsefClient
 from ksef.exceptions import KsefError
-from ksef.models import KsefEnvironment, InvoiceFormat
-
+from ksef.models import InvoiceFormat, KsefEnvironment
 
 # Sample invoice XML (minimal structure for testing)
 SAMPLE_INVOICE_XML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -65,7 +64,7 @@ async def basic_example():
     """Basic example of sending, checking status, and downloading an invoice."""
     print("🚀 KSeF-py Basic Usage Example")
     print("=" * 50)
-    
+
     # Initialize the client
     print("\n1. Initializing KSeF client...")
     client = KsefClient(
@@ -73,48 +72,47 @@ async def basic_example():
         env=KsefEnvironment.TEST,  # Use test environment
         token_path="~/.ksef/test_token.jwt",  # Optional: path to save JWT token
     )
-    
+
     try:
         async with client:
             # Step 1: Send an invoice
             print("\n2. Sending invoice to KSeF...")
             ksef_number = await client.send_invoice(
-                xml_content=SAMPLE_INVOICE_XML,
-                filename="example_invoice.xml"
+                xml_content=SAMPLE_INVOICE_XML, filename="example_invoice.xml"
             )
-            print(f"✅ Invoice sent successfully!")
+            print("✅ Invoice sent successfully!")
             print(f"   KSeF Number: {ksef_number}")
-            
+
             # Step 2: Check invoice status
             print("\n3. Checking invoice status...")
             status = await client.get_status(ksef_number)
             print(f"📊 Invoice Status: {status.value}")
-            
+
             # Step 3: Download invoice as PDF
             print("\n4. Downloading invoice as PDF...")
             pdf_path = await client.download(
                 ksef_number=ksef_number,
                 format=InvoiceFormat.PDF,
-                output_path=f"downloads/{ksef_number}.pdf"
+                output_path=f"downloads/{ksef_number}.pdf",
             )
             print(f"💾 PDF saved to: {pdf_path}")
-            
+
             # Step 4: Download invoice as XML
             print("\n5. Downloading invoice as XML...")
             xml_path = await client.download(
                 ksef_number=ksef_number,
                 format=InvoiceFormat.XML,
-                output_path=f"downloads/{ksef_number}.xml"
+                output_path=f"downloads/{ksef_number}.xml",
             )
             print(f"💾 XML saved to: {xml_path}")
-            
+
     except KsefError as e:
         print(f"❌ KSeF Error: {e}")
-        if hasattr(e, 'details') and e.details:
+        if hasattr(e, "details") and e.details:
             print(f"   Details: {e.details}")
     except Exception as e:
         print(f"💥 Unexpected error: {e}")
-    
+
     print("\n✨ Example completed!")
 
 
@@ -122,23 +120,23 @@ async def synchronous_example():
     """Example using synchronous methods."""
     print("\n🔄 Synchronous API Example")
     print("=" * 50)
-    
+
     client = KsefClient(nip="1234567890", env="test")
-    
+
     try:
         # Using sync methods (these will run asyncio.run internally)
         print("\n1. Sending invoice (sync)...")
         ksef_number = client.send_invoice_sync(SAMPLE_INVOICE_XML)
         print(f"✅ KSeF Number: {ksef_number}")
-        
+
         print("\n2. Checking status (sync)...")
         status = client.get_status_sync(ksef_number)
         print(f"📊 Status: {status.value}")
-        
+
         print("\n3. Downloading PDF (sync)...")
         pdf_path = client.download_sync(ksef_number, format="pdf")
         print(f"💾 PDF saved to: {pdf_path}")
-        
+
     except KsefError as e:
         print(f"❌ Error: {e}")
 
@@ -147,31 +145,30 @@ async def file_based_example():
     """Example reading invoice from a file."""
     print("\n📁 File-based Example")
     print("=" * 50)
-    
+
     # Create a sample invoice file
     invoice_file = Path("sample_invoice.xml")
     invoice_file.write_text(SAMPLE_INVOICE_XML, encoding="utf-8")
     print(f"📝 Created sample invoice: {invoice_file}")
-    
+
     # Read and send the invoice
     client = KsefClient(nip="1234567890", env="test")
-    
+
     try:
         async with client:
             print("\n1. Reading invoice from file...")
             xml_content = invoice_file.read_text(encoding="utf-8")
-            
+
             print("2. Sending invoice...")
             ksef_number = await client.send_invoice(
-                xml_content=xml_content,
-                filename=invoice_file.name
+                xml_content=xml_content, filename=invoice_file.name
             )
             print(f"✅ Sent: {ksef_number}")
-            
+
             print("3. Checking status...")
             status = await client.get_status(ksef_number)
             print(f"📊 Status: {status.value}")
-            
+
     except KsefError as e:
         print(f"❌ Error: {e}")
     finally:
@@ -185,27 +182,27 @@ async def error_handling_example():
     """Example demonstrating error handling."""
     print("\n⚠️  Error Handling Example")
     print("=" * 50)
-    
+
     client = KsefClient(nip="1234567890", env="test")
-    
+
     try:
         async with client:
             # Try to send invalid XML
             print("\n1. Sending invalid XML...")
             await client.send_invoice("<invalid>xml</invalid>")
-            
+
     except KsefError as e:
         print(f"✅ Caught expected error: {e}")
         print(f"   Error type: {type(e).__name__}")
-        if hasattr(e, 'error_code') and e.error_code:
+        if hasattr(e, "error_code") and e.error_code:
             print(f"   Error code: {e.error_code}")
-    
+
     try:
         async with client:
             # Try to check status of non-existent invoice
             print("\n2. Checking status of non-existent invoice...")
             await client.get_status("KSEF:2025:PL/NONEXISTENT")
-            
+
     except KsefError as e:
         print(f"✅ Caught expected error: {e}")
 
@@ -216,16 +213,16 @@ async def main():
     print("========================")
     print("This example demonstrates the core functionality of ksef-py.")
     print("Note: This uses mock data and the test environment.")
-    
+
     # Create downloads directory
     Path("downloads").mkdir(exist_ok=True)
-    
+
     # Run examples
     await basic_example()
     await synchronous_example()
     await file_based_example()
     await error_handling_example()
-    
+
     print("\n🎉 All examples completed!")
     print("\nNext steps:")
     print("1. Get your real NIP and configure authentication")
@@ -235,4 +232,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

@@ -1,6 +1,6 @@
 """Exception classes for ksef-py."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 
 class KsefError(Exception):
@@ -9,7 +9,7 @@ class KsefError(Exception):
     def __init__(
         self,
         message: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
         error_code: Optional[str] = None,
     ) -> None:
         super().__init__(message)
@@ -56,4 +56,4 @@ class KsefTimeoutError(KsefNetworkError):
 class KsefRateLimitError(KsefError):
     """Raised when rate limits are exceeded."""
 
-    pass 
+    pass

@@ -1,8 +1,9 @@
 """Pytest configuration and shared fixtures."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from ksef import KsefClient
 from ksef.models import KsefEnvironment, TokenResponse
@@ -67,7 +68,7 @@ def ksef_client(test_nip):
 def mock_httpx_client():
     """Mock httpx AsyncClient."""
     client = AsyncMock()
-    
+
     # Mock successful token response
     mock_response = AsyncMock()
     mock_response.status_code = 200
@@ -78,18 +79,21 @@ def mock_httpx_client():
     }
     client.post.return_value = mock_response
     client.get.return_value = mock_response
-    
+
     return client
 
 
 @pytest.fixture(autouse=True)
 def mock_httpx_clients(monkeypatch, mock_httpx_client):
     """Automatically mock httpx clients for all tests."""
+
     def mock_async_client_property(self):
         return mock_httpx_client
-        
+
     def mock_sync_client_property(self):
         return MagicMock()
-    
-    monkeypatch.setattr(KsefClient, "async_client", property(mock_async_client_property))
-    monkeypatch.setattr(KsefClient, "sync_client", property(mock_sync_client_property)) 
+
+    monkeypatch.setattr(
+        KsefClient, "async_client", property(mock_async_client_property)
+    )
+    monkeypatch.setattr(KsefClient, "sync_client", property(mock_sync_client_property))
