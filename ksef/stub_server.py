@@ -110,7 +110,7 @@ def create_app() -> FastAPI:
             "processing_description": "Invoice submitted successfully",
         }
 
-    @app.get("/v1/invoices/{ksef_number}/status")
+    @app.get("/v1/invoices/{ksef_number:path}/status")
     async def get_invoice_status(
         ksef_number: str,
         authorization: str = Header(...),
@@ -134,7 +134,7 @@ def create_app() -> FastAPI:
             "download_url": f"/v1/invoices/{ksef_number}/download",
         }
 
-    @app.get("/v1/invoices/{ksef_number}/download")
+    @app.get("/v1/invoices/{ksef_number:path}/download")
     async def download_invoice(
         ksef_number: str,
         format: str = "pdf",
