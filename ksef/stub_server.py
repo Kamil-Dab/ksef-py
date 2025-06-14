@@ -4,9 +4,18 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any, Dict
 
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.responses import Response
 from pydantic import BaseModel
+
+# Module-level storage that persists across requests
+_invoices_store: Dict[str, Dict[str, Any]] = {}
+
+
+def clear_storage() -> None:
+    """Clear the invoice storage. Useful for testing."""
+    global _invoices_store
+    _invoices_store.clear()
 
 
 class TokenRequest(BaseModel):
@@ -29,9 +38,6 @@ def create_app() -> FastAPI:
         description="Mock implementation of KSeF API for testing",
         version="1.0.0",
     )
-
-    # In-memory storage for mock data
-    invoices_store: Dict[str, Dict[str, Any]] = {}
 
     @app.get("/")
     async def root():
@@ -69,7 +75,7 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/invoices/send")
     async def send_invoice(
-        request: InvoiceRequest,
+        invoice_request: InvoiceRequest,
         authorization: str = Header(...),
     ):
         """Mock invoice send endpoint."""
@@ -81,16 +87,16 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=401, detail="Invalid token")
         
         # Validate basic XML structure
-        if not request.xml_content.strip().startswith("<?xml"):
+        if not invoice_request.xml_content.strip().startswith("<?xml"):
             raise HTTPException(status_code=400, detail="Invalid XML format")
         
         # Generate mock KSeF number
         ksef_number = f"KSEF:2025:PL/{uuid.uuid4().hex[:10].upper()}"
         
-        # Store invoice data
-        invoices_store[ksef_number] = {
-            "xml_content": request.xml_content,
-            "filename": request.filename,
+        # Store invoice data in module-level storage
+        _invoices_store[ksef_number] = {
+            "xml_content": invoice_request.xml_content,
+            "filename": invoice_request.filename,
             "status": "Accepted",
             "timestamp": datetime.now().isoformat(),
             "processing_code": "200",
@@ -113,10 +119,10 @@ def create_app() -> FastAPI:
         if not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid authorization header")
         
-        if ksef_number not in invoices_store:
+        if ksef_number not in _invoices_store:
             raise HTTPException(status_code=404, detail="Invoice not found")
         
-        invoice_data = invoices_store[ksef_number]
+        invoice_data = _invoices_store[ksef_number]
         
         return {
             "ksef_number": ksef_number,
@@ -138,13 +144,13 @@ def create_app() -> FastAPI:
         if not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid authorization header")
         
-        if ksef_number not in invoices_store:
+        if ksef_number not in _invoices_store:
             raise HTTPException(status_code=404, detail="Invoice not found")
         
         if format not in ["pdf", "xml"]:
             raise HTTPException(status_code=400, detail="Invalid format")
         
-        invoice_data = invoices_store[ksef_number]
+        invoice_data = _invoices_store[ksef_number]
         
         if format == "xml":
             content = invoice_data["xml_content"].encode("utf-8")
@@ -172,7 +178,7 @@ def create_app() -> FastAPI:
         return {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
-            "invoices_count": len(invoices_store),
+            "invoices_count": len(_invoices_store),
         }
 
     return app

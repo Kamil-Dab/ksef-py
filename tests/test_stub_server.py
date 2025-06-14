@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from datetime import datetime, timedelta
 
-from ksef.stub_server import create_app
+from ksef.stub_server import create_app, clear_storage
 
 
 class TestStubServer:
@@ -12,6 +12,8 @@ class TestStubServer:
 
     def setup_method(self):
         """Set up test fixtures."""
+        # Clear storage before each test to ensure isolation
+        clear_storage()
         self.app = create_app()
         self.client = TestClient(self.app)
 
