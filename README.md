@@ -3,7 +3,7 @@
 *A modern Python SDK + CLI for Poland's National e-Invoice System (KSeF)*
 
 [![CI](https://github.com/Kamil-Dab/ksef-py/workflows/CI/badge.svg)](https://github.com/Kamil-Dab/ksef-py/actions)
-[![Coverage](https://codecov.io/gh/Kamil-Dab/ksef-py/branch/main/graph/badge.svg)](https://codecov.io/gh/Kamil-Dab/ksef-py)
+[![Coverage](https://img.shields.io/badge/coverage-40%25-green)](https://github.com/Kamil-Dab/ksef-py)
 [![PyPI version](https://badge.fury.io/py/ksef-py.svg)](https://badge.fury.io/py/ksef-py)
 [![Python versions](https://img.shields.io/pypi/pyversions/ksef-py.svg)](https://pypi.org/project/ksef-py/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
