@@ -1,0 +1,19 @@
+{
+  "environment": "prod",
+  "updated_at": "2025-01-01T00:00:00Z",
+  "schemas": {
+    "KSeF_v1.0.xsd": {
+      "path": "ksef/xsd/prod/KSeF_v1.0.xsd",
+      "checksum": "dea24a90ab0fdb4bd405e653e11240a521deba9bf18bcb53caaf839bc2c27e50",
+      "size": 1182,
+      "type": "placeholder"
+    },
+    "FA_v1-0E.xsd": {
+      "path": "ksef/xsd/prod/FA_v1-0E.xsd",
+      "checksum": "dea24a90ab0fdb4bd405e653e11240a521deba9bf18bcb53caaf839bc2c27e50",
+      "size": 1182,
+      "type": "placeholder"
+    }
+  },
+  "note": "These are placeholder schemas for development. Replace with real KSeF schemas when available."
+}

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://ksef.mf.gov.pl/"
+           elementFormDefault="qualified">
+    
+    <!-- Placeholder KSeF Schema -->
+    <!-- This is a development placeholder until real schemas are available -->
+    
+    <xs:element name="Invoice">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="InvoiceNumber" type="xs:string"/>
+                <xs:element name="IssueDate" type="xs:date"/>
+                <xs:element name="Seller" type="SellerType"/>
+                <xs:element name="Buyer" type="BuyerType"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:complexType name="SellerType">
+        <xs:sequence>
+            <xs:element name="TaxID" type="xs:string"/>
+            <xs:element name="Name" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="BuyerType">
+        <xs:sequence>
+            <xs:element name="TaxID" type="xs:string"/>
+            <xs:element name="Name" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+    
+</xs:schema>
